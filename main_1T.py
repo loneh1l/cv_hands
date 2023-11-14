@@ -6,6 +6,8 @@ def extract_feature(dir='dataset/001/1_01_s.bmp',switch=-1, MODE_OPTION = 2):
         image = extract_feature_1(image, switch)
     if MODE_OPTION == 2:
         image = extract_feature_2(image, switch)
+    if MODE_OPTION == 3:
+        image = extract_feature_3(image, switch)
     return image
 
 
@@ -19,6 +21,8 @@ if __name__ == '__main__':
         path_out = 'gabor'
     elif MODE_OPTION == 2:
         path_out = 'gabor_bin'
+    elif MODE_OPTION == 3:
+        path_out = 'canny'
     else:
         print('草泥马的选你妈呢，把你妈都选了')
         exit(0)
