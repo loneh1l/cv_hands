@@ -1,9 +1,7 @@
 # cv
 
 #### 介绍
-{**以下是 Gitee 平台说明，您可以替换此简介**
-Gitee 是 OSCHINA 推出的基于 Git 的代码托管平台（同时支持 SVN）。专为开发者提供稳定、高效、安全的云端软件开发协作平台
-无论是个人、团队、或是企业，都能够用 Gitee 实现代码托管、项目管理、协作开发。企业项目请看 [https://gitee.com/enterprises](https://gitee.com/enterprises)}
+芝士一个从掌纹图片提取掌纹并并进行分类识别的项目。改项目有两个入口，main_1T.py可以用不同的方法提取出掌纹，main_2T.py提供了一个few shot learning（6 shots, 100 ways）用于分类的神经网络。
 
 #### 软件架构
 软件架构说明
