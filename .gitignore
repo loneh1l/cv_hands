@@ -1,0 +1,4 @@
+dataset/
+result/
+result_canny/
+*.pyc
