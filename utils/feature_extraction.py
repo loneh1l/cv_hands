@@ -40,3 +40,14 @@ def extract_feature_2(image,swtich=-1):
         image = contrast_exp(image, p=1.25)
         image = texture_enhancement(image, 1.0)
     return image
+'''
+canny函数边缘检测
+'''
+def extract_feature_3(image,swtich=-1):
+    if swtich==-1:#展示中间步骤
+        show(image)
+        image=edge_detection(image)
+        show(image)
+    else:
+        image=edge_detection(image)
+    return image
