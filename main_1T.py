@@ -14,7 +14,7 @@ def extract_feature(dir='dataset/001/1_01_s.bmp',switch=-1, MODE_OPTION = 2):
 
 if __name__ == '__main__':
     path_in = "dataset"
-    MODE_OPTION = 1  # 模式选择，0是不做任何处理，输出原图 1是二值化，2是不二值化
+    MODE_OPTION = 3  # 模式选择，0是不做任何处理，输出原图 1是二值化，2是不二值化
     if MODE_OPTION == 1:
         path_out = 'origin'
     elif MODE_OPTION == 1:
