@@ -1,5 +1,7 @@
 from utils.feature_extraction import *
 import os
+
+
 def extract_feature(dir='dataset/001/1_01_s.bmp',switch=-1, MODE_OPTION = 2):
     image = cv2.imread(dir, 0)
     if MODE_OPTION == 1:
@@ -9,7 +11,6 @@ def extract_feature(dir='dataset/001/1_01_s.bmp',switch=-1, MODE_OPTION = 2):
     if MODE_OPTION == 3:
         image = extract_feature_3(image, switch)
     return image
-
 
 
 if __name__ == '__main__':

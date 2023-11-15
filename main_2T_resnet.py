@@ -1,4 +1,3 @@
-
 import random
 from utils.dataset_build import *
 import torch
@@ -22,8 +21,8 @@ data=Pic_Data(root_dir,transforms.Compose(
     ]
 ))
 '''
-data=Pic_Data(root_dir,transforms.ToTensor())
-train_dataset,validation_dataset=train_test_split(data,test_size=0.5,shuffle=True)
+data = Pic_Data(root_dir, transforms.ToTensor())
+train_dataset, validation_dataset = train_test_split(data, test_size=0.5, shuffle=True)
 
 all_targets = np.array([train_dataset.__getitem__(i)[1] for i in range(len(train_dataset))])
 all_labels = np.array(list(set(all_targets)))
@@ -32,48 +31,44 @@ all_labels = np.array(list(set(all_targets)))
 
 def sample_batch(batch_size):
     """
-    从train_dataset中sample一些数据对。一半正样本，一半负样本
+    从train_dataset中sample一些数据
     """
-
-    # 选取二分之一个batch的labels作为正样本，这样就完成了正样本的构造。
-    positive_labels = np.random.choice(all_labels, batch_size // 2)
-    # 针对这些labels，每个选取两张相同类别的图片
     batch = []
-    for label in positive_labels:
-        labels_indexes = np.argwhere(all_targets == label)
-        pair = np.random.choice(labels_indexes.flatten(), 2)
-        batch.append((pair[0], pair[1], 1)) # 图片类别相同，所以target为1
 
-    # 选取负样本，这次选取一个batch的labels，然后每个labels个选取一张图片。这样就完成了负样本的构造。
-    negative_labels = np.random.choice(all_labels, batch_size)
-    for sample1, sample2 in negative_labels.reshape(-1, 2):
-        sample1 = np.random.choice(np.argwhere(all_targets == sample1).flatten(), 1)
-        sample2 = np.random.choice(np.argwhere(all_targets == sample2).flatten(), 1)
-        batch.append((sample1.item(), sample2.item(), 0)) # 图片类别不相同，所以target为0
+    labels = np.random.choice(all_labels, batch_size)
+    for target in labels.reshape(-1, 1):
+        sample = np.random.choice(np.argwhere(all_targets == target).flatten(), 1)
+        batch.append((sample.item(), target))
 
-    """
-    完成上面的动作后，最终得到的batch如下：
-        (734, 736, 1),
-        (127, 132, 1),
-        ...
-        (859, 173, 0),
-        ...
-    其中前两个表示样本对对应在dataset中的index，1表示前两个样本是相同类别。0表示这两个样本为不同类别。
-    接下来需要对其进行shuffle处理，然后从dataset中获取到对应数据，最终组成batch.
-    """
     random.shuffle(batch)
 
-    sample1_list = []
-    sample2_list = []
+    sample_list = []
     target_list = []
-    for sample1, sample2, target in batch:
-        sample1_list.append(train_dataset.__getitem__(sample1)[0])
-        sample2_list.append(train_dataset.__getitem__(sample2)[0])
+    for sample, target in batch:
+        sample_list.append(train_dataset.__getitem__(sample)[0])
         target_list.append(target)
-    sample1 = torch.stack(sample1_list)
-    sample2 = torch.stack(sample2_list)
+
+    sample = torch.stack(sample_list)
     targets = torch.LongTensor(target_list)
-    return sample1, sample2, targets
+    return sample, targets
+
+
+def generate_resnet(num_classes=100, in_channels=1, model_name="ResNet18"):
+    if model_name == "ResNet18":
+        model = models.resnet18(pretrained=True)
+    elif model_name == "ResNet34":
+        model = models.resnet34(pretrained=True)
+    elif model_name == "ResNet50":
+        model = models.resnet50(pretrained=True)
+    elif model_name == "ResNet101":
+        model = models.resnet101(pretrained=True)
+    elif model_name == "ResNet152":
+        model = models.resnet152(pretrained=True)
+    model.conv1 = nn.Conv2d(in_channels, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+    fc_features = model.fc.in_features
+    model.fc = nn.Linear(fc_features, num_classes)
+
+    return model
 
 
 class SimilarityModel(nn.Module):
@@ -108,7 +103,7 @@ class SimilarityModel(nn.Module):
         sample2_features = self.conv(sample2)
         return self.sim(torch.abs(sample1_features - sample2_features))
 
-model = SimilarityModel()
+model = generate_resnet()
 model = model.to(device)
 
 model = model.train()
@@ -125,11 +120,14 @@ last_episode = 0
 
 for episode in range(1000):
     # 使用sample_batch函数sample出一组数据，包含一半正样本，一半负样本
-    sample1, sample2, targets = sample_batch(batch_size)
+    sample, targets = sample_batch(batch_size)
     # 将数据送入模型，判断是否为同一类别
-    outputs = model(sample1.to(device), sample2.to(device))
+    outputs = model(sample.to(device))
     # 将模型的结果丢给BCELoss计算损失
-    loss = criteria(outputs.flatten(), targets.to(device).float())
+    outputs = torch.argmax(outputs, dim=1, keepdim=True)
+
+    loss = criteria(outputs.float(), targets.to(device).float())
+
     loss.backward()
     # 更新模型参数
     optimizer.step()
@@ -162,6 +160,7 @@ for label in all_labels:
     support_set.append((label_indexes[:2].flatten().tolist()))
     validation_set += label_indexes[2:].flatten().tolist()
 
+
 def predict(image):
     sim_list = [] # 存储image与每个类别的相似度
     # 一个类别一个类别的遍历，indexes存储的就是当前类别的5张图片的index
@@ -179,6 +178,7 @@ def predict(image):
     #print(sim_list)
     result_index = torch.stack(sim_list).argmax().item()
     return all_labels[result_index]
+
 
 total = 0
 total_correct = 0
@@ -198,19 +198,3 @@ for i in progress:
     progress.set_postfix({
             "accuracy": str("%.3f" % (total_correct / total))
         })
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
