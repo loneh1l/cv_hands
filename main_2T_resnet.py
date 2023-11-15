@@ -38,7 +38,8 @@ def sample_batch(batch_size):
     labels = np.random.choice(all_labels, batch_size)
     for target in labels.reshape(-1, 1):
         sample = np.random.choice(np.argwhere(all_targets == target).flatten(), 1)
-        batch.append((sample.item(), target))
+        label = np.eye(100)[target[0]-1]
+        batch.append((sample.item(), label))
 
     random.shuffle(batch)
 
@@ -70,44 +71,11 @@ def generate_resnet(num_classes=100, in_channels=1, model_name="ResNet18"):
 
     return model
 
-
-class SimilarityModel(nn.Module):
-
-    def __init__(self):
-        super(SimilarityModel, self).__init__()
-
-        # 定义一个卷积层，用于特征提取。
-        self.conv = nn.Sequential(
-            nn.Conv2d(1, 10, kernel_size=5),
-            nn.MaxPool2d(kernel_size=2, stride=2),
-            nn.ReLU(),
-            nn.Conv2d(10, 20, kernel_size=5),
-            nn.MaxPool2d(kernel_size=2, stride=2),
-            nn.ReLU(),
-            nn.Conv2d(20, 20, kernel_size=5),
-            nn.MaxPool2d(kernel_size=2, stride=2),
-            nn.ReLU(),
-        )
-
-        # 定义一个线性层，用来判断两张图片是否为同一类别
-        self.sim = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(2880, 100),
-            nn.ReLU(),
-            nn.Linear(100, 1),
-            nn.Sigmoid(),
-        )
-
-    def forward(self, sample1, sample2):
-        sample1_features = self.conv(sample1)
-        sample2_features = self.conv(sample2)
-        return self.sim(torch.abs(sample1_features - sample2_features))
-
 model = generate_resnet()
 model = model.to(device)
 
 model = model.train()
-criteria = nn.BCELoss()
+criteria = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 batch_size = 64
 # 如果500次迭代loss都没有下降，那么就停止训练
@@ -124,10 +92,10 @@ for episode in range(1000):
     # 将数据送入模型，判断是否为同一类别
     outputs = model(sample.to(device))
     # 将模型的结果丢给BCELoss计算损失
-    outputs = torch.argmax(outputs, dim=1, keepdim=True)
-
-    loss = criteria(outputs.float(), targets.to(device).float())
-
+    # print(outputs)
+    # print(targets)
+    loss = criteria(outputs, targets.to(device).float())
+    # print(loss)
     loss.backward()
     # 更新模型参数
     optimizer.step()

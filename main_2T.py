@@ -73,6 +73,7 @@ def sample_batch(batch_size):
     sample1 = torch.stack(sample1_list)
     sample2 = torch.stack(sample2_list)
     targets = torch.LongTensor(target_list)
+    print(target_list)
     return sample1, sample2, targets
 
 
