@@ -1,7 +1,9 @@
+
 import random
 from utils.dataset_build import *
 import torch
-from utils.model import SimilarityModel
+import torchvision
+import torchvision.models as models
 from torch import nn
 from torchvision import transforms
 import numpy as np
@@ -74,6 +76,38 @@ def sample_batch(batch_size):
     print(target_list)
     return sample1, sample2, targets
 
+
+class SimilarityModel(nn.Module):
+
+    def __init__(self):
+        super(SimilarityModel, self).__init__()
+
+        # 定义一个卷积层，用于特征提取。
+        self.conv = nn.Sequential(
+            nn.Conv2d(1, 10, kernel_size=5),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.ReLU(),
+            nn.Conv2d(10, 20, kernel_size=5),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.ReLU(),
+            nn.Conv2d(20, 20, kernel_size=5),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.ReLU(),
+        )
+
+        # 定义一个线性层，用来判断两张图片是否为同一类别
+        self.sim = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(2880, 100),
+            nn.ReLU(),
+            nn.Linear(100, 1),
+            nn.Sigmoid(),
+        )
+
+    def forward(self, sample1, sample2):
+        sample1_features = self.conv(sample1)
+        sample2_features = self.conv(sample2)
+        return self.sim(torch.abs(sample1_features - sample2_features))
 
 model = SimilarityModel()
 model = model.to(device)
@@ -165,3 +199,19 @@ for i in progress:
     progress.set_postfix({
             "accuracy": str("%.3f" % (total_correct / total))
         })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
