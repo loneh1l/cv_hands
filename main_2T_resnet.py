@@ -17,7 +17,7 @@ data=Pic_Data(root_dir,transforms.Compose(
     ]
 ))
 '''
-data = Onehot_Pic_Data(root_dir, transforms.ToTensor())
+data = Pic_Data(root_dir, transforms.ToTensor(), onehot=True)
 train_dataset, test_dataset = train_test_split(data, test_size=0.5, shuffle=True)
 train_loader = DataLoader(dataset=train_dataset, batch_size=64, shuffle=True)
 test_loader = DataLoader(dataset=test_dataset, batch_size=600, shuffle=True)
