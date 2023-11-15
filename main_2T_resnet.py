@@ -1,16 +1,12 @@
-import random
 from utils.dataset_build import *
 import torch
-import torchvision
 import torchvision.models as models
 from torch import nn
 from torchvision import transforms
-import numpy as np
-import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from tqdm import tqdm
+from sklearn.metrics import accuracy_score
 
-root_dir = 'result//gabor_bin'
+root_dir = 'result//origin'
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 '''
@@ -21,37 +17,10 @@ data=Pic_Data(root_dir,transforms.Compose(
     ]
 ))
 '''
-data = Pic_Data(root_dir, transforms.ToTensor())
-train_dataset, validation_dataset = train_test_split(data, test_size=0.5, shuffle=True)
-
-all_targets = np.array([train_dataset.__getitem__(i)[1] for i in range(len(train_dataset))])
-all_labels = np.array(list(set(all_targets)))
-
-
-
-def sample_batch(batch_size):
-    """
-    从train_dataset中sample一些数据
-    """
-    batch = []
-
-    labels = np.random.choice(all_labels, batch_size)
-    for target in labels.reshape(-1, 1):
-        sample = np.random.choice(np.argwhere(all_targets == target).flatten(), 1)
-        label = np.eye(100)[target[0]-1]
-        batch.append((sample.item(), label))
-
-    random.shuffle(batch)
-
-    sample_list = []
-    target_list = []
-    for sample, target in batch:
-        sample_list.append(train_dataset.__getitem__(sample)[0])
-        target_list.append(target)
-
-    sample = torch.stack(sample_list)
-    targets = torch.LongTensor(target_list)
-    return sample, targets
+data = Onehot_Pic_Data(root_dir, transforms.ToTensor())
+train_dataset, test_dataset = train_test_split(data, test_size=0.5, shuffle=True)
+train_loader = DataLoader(dataset=train_dataset, batch_size=64, shuffle=True)
+test_loader = DataLoader(dataset=test_dataset, batch_size=600, shuffle=True)
 
 
 def generate_resnet(num_classes=100, in_channels=1, model_name="ResNet18"):
@@ -71,6 +40,7 @@ def generate_resnet(num_classes=100, in_channels=1, model_name="ResNet18"):
 
     return model
 
+
 model = generate_resnet()
 model = model.to(device)
 
@@ -85,21 +55,19 @@ min_loss = 100.
 # 记录下上一次最小的loss是哪一次
 last_episode = 0
 # 无线更新参数，直到loss不再下降为止
-
-for episode in range(1000):
-    # 使用sample_batch函数sample出一组数据，包含一半正样本，一半负样本
-    sample, targets = sample_batch(batch_size)
-    # 将数据送入模型，判断是否为同一类别
-    outputs = model(sample.to(device))
-    # 将模型的结果丢给BCELoss计算损失
-    # print(outputs)
-    # print(targets)
-    loss = criteria(outputs, targets.to(device).float())
-    # print(loss)
-    loss.backward()
-    # 更新模型参数
-    optimizer.step()
-    optimizer.zero_grad()
+#
+for episode in range(101):
+    # 使用sample_batch函数sample出一组数据
+    for data in test_loader:
+        sample, targets = data
+        # 将数据送入模型，判断是否为同一类别
+        outputs = model(sample.to(device))
+        # 将模型的结果丢给CELoss计算损失
+        loss = criteria(outputs, targets.to(device).float())
+        loss.backward()
+        # 更新模型参数
+        optimizer.step()
+        optimizer.zero_grad()
 
     # 如果本次损失比之前的小，那么记录一下
     if loss < min_loss:
@@ -116,53 +84,11 @@ for episode in range(1000):
 
 print("Finish Training.")
 
-#validation_dataset=train_dataset
-model=torch.load("model/best_model.pt")
-model=model.to(device)
+# model = torch.load("model/best_model.pt")
+# model = model.to(device)
 
-support_set = []
-validation_set = []
-# 遍历所有的标签，每个标签选取前5个作为support set，后面的作为验证数据
-for label in all_labels:
-    label_indexes = np.argwhere(all_targets == label)
-    support_set.append((label_indexes[:2].flatten().tolist()))
-    validation_set += label_indexes[2:].flatten().tolist()
-
-
-def predict(image):
-    sim_list = [] # 存储image与每个类别的相似度
-    # 一个类别一个类别的遍历，indexes存储的就是当前类别的5张图片的index
-    for indexes in support_set:
-        # 去validation_dataset中找出index对应的图片tensor
-        tensor_list = []
-        for i in indexes:
-            tensor_list.append(validation_dataset[i][0])
-        support_tensor = torch.stack(tensor_list)
-        # 拿到该类别的5个图片后，就可以送给模型求image与它们的相似程度了，最后求个平均
-        sim = model(image.repeat(2, 1,1,1).to(device), support_tensor.to(device)).mean()
-        sim_list.append(sim)
-
-    # 找出其中相似程度最高的那个，它就是预测结果
-    #print(sim_list)
-    result_index = torch.stack(sim_list).argmax().item()
-    return all_labels[result_index]
-
-
-total = 0
-total_correct = 0
-
-# 由于验证集太大，为了更快的看到效果，我们验证前，将validation_set打乱一下再验证
-random.shuffle(validation_set)
-progress = tqdm(validation_set)
-
-for i in progress:
-    image, label = validation_dataset.__getitem__(i)
-    predict_label = predict(image)
-
-    total += 1
-    if predict_label == label:
-        total_correct += 1
-
-    progress.set_postfix({
-            "accuracy": str("%.3f" % (total_correct / total))
-        })
+for data in test_loader:
+    sample, targets = data
+    y_pre = torch.argmax(model(sample.to(device)), 1).cpu()
+    y_true = torch.argmax(targets, 1).cpu()
+    print(accuracy_score(y_true, y_pre, normalize=True, sample_weight=None))
