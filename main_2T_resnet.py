@@ -12,9 +12,9 @@ import numpy as np
 
 current_time = datetime.datetime.now()
 current_time_str = current_time.strftime('%Y_%m_%d_%H_%M_%S')
-episode_num = 1000
+episode_num = 500
 
-root_dir = 'result//gabor_bin'
+root_dir = 'result//origin'
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
@@ -53,7 +53,7 @@ def learn(dataset, testdataset):
         acc = test(model, testdataset)
         acc_dict.append(acc)
         mean_loss /= 64
-        loss_dict.append(np.log10(mean_loss))
+        loss_dict.append(mean_loss)
         # 如果本次acc比之前的大，那么记录一下
         if acc > max_acc:
             max_acc = acc
@@ -82,14 +82,20 @@ else:
     model, acc_dict, loss_dict = learn(train_dataset, test_dataset)
 
     # 画图
-    if not os.path.exists("result/picture/"+current_time_str):
-        os.makedirs("result/picture/"+current_time_str)
+    if not os.path.exists("result/picture/" + current_time_str):
+        os.makedirs("result/picture/" + current_time_str)
+    plt.figure(figsize=(24, 8))
+    plt.rcParams.update({"font.size": 20})
+    plt.subplot(121)
+    plt.ylabel('accurancy', fontsize=20)
+    plt.xlabel('episode', fontsize=20)
     plt.plot(range(episode_num), acc_dict)
-    plt.savefig('result/picture/'+current_time_str+'/acc_resnet_gabor_bin.png')
+    plt.subplot(122)
+    plt.ylabel('loss', fontsize=20)
+    plt.xlabel('episode', fontsize=20)
+    plt.semilogy(range(episode_num), loss_dict)
+    plt.legend()
+    plt.savefig('result/picture/' + current_time_str + '/acc_and_loss_resnet_gabor_bin.png')
     plt.show()
-    plt.plot(range(episode_num), loss_dict)
-    plt.savefig('result/picture/'+current_time_str+'/loss_resnet_gabor_bin.png')
-    plt.show()
-
 acc = test(model, test_dataset)
 print(acc)

@@ -27,7 +27,7 @@ dataset_directory = 'result//origin'
 X, y = load_data(dataset_directory)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5, random_state=42)
 
-MODE = 2 # 1 for knn, 2 for svm
+MODE = 1 # 1 for knn, 2 for svm
 if MODE==1:
     clf = KNeighborsClassifier(n_neighbors=3)  # 可根据需要调整邻居数量
 elif MODE ==2:
