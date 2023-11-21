@@ -1,5 +1,6 @@
 import torchvision.models as models
 from torch import nn
+import torch
 
 def generate_resnet(num_classes=100, in_channels=1, model_name="ResNet18"):
     if model_name == "ResNet18":

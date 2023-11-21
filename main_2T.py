@@ -20,7 +20,7 @@ data=Pic_Data(root_dir,transforms.Compose(
     ]
 ))
 '''
-data=Pic_Data(root_dir,transforms.ToTensor())
+data = Pic_Data(root_dir, transforms.ToTensor())
 train_dataset,validation_dataset=train_test_split(data,test_size=0.5,shuffle=True)
 
 all_targets = np.array([train_dataset.__getitem__(i)[1] for i in range(len(train_dataset))])
@@ -71,7 +71,6 @@ def sample_batch(batch_size):
     sample1 = torch.stack(sample1_list)
     sample2 = torch.stack(sample2_list)
     targets = torch.LongTensor(target_list)
-    print(target_list)
     return sample1, sample2, targets
 
 
@@ -112,14 +111,14 @@ for episode in range(1000):
         break
 
     # 每50个episode打印一下日志
-    if episode % 50 ==  0:
+    if episode % 50 == 0:
         print(f"episode {episode}, loss {loss}")
 
 print("Finish Training.")
 
 #validation_dataset=train_dataset
-model=torch.load("model/best_model.pt")
-model=model.to(device)
+model = torch.load("model/best_model.pt")
+model = model.to(device)
 
 support_set = []
 validation_set = []
