@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
-root_dir = 'result//gabor_bin'
+root_dir = "result/gabor_bin"
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 '''
@@ -21,11 +21,10 @@ data=Pic_Data(root_dir,transforms.Compose(
 ))
 '''
 data = Pic_Data(root_dir, transforms.ToTensor())
-train_dataset,validation_dataset=train_test_split(data,test_size=0.5,shuffle=True)
+train_dataset, validation_dataset = train_test_split(data,test_size=0.5, shuffle=True)
 
 all_targets = np.array([train_dataset.__getitem__(i)[1] for i in range(len(train_dataset))])
 all_labels = np.array(list(set(all_targets)))
-
 
 
 def sample_batch(batch_size):
@@ -74,51 +73,61 @@ def sample_batch(batch_size):
     return sample1, sample2, targets
 
 
-model = SimilarityModel()
-model = model.to(device)
+def train():
+    model = SimilarityModel()
+    model = model.to(device)
 
-model = model.train()
-criteria = nn.BCELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-batch_size = 64
-# 如果500次迭代loss都没有下降，那么就停止训练
-early_stop = 1500
-# 记录最小的一次loss值
-min_loss = 100.
-# 记录下上一次最小的loss是哪一次
-last_episode = 0
-# 无线更新参数，直到loss不再下降为止
+    model = model.train()
+    criteria = nn.BCELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    batch_size = 64
+    # 如果500次迭代loss都没有下降，那么就停止训练
+    early_stop = 1500
+    # 记录最小的一次loss值
+    min_loss = 100.
+    # 记录下上一次最小的loss是哪一次
+    last_episode = 0
+    # 无线更新参数，直到loss不再下降为止
 
-for episode in range(1000):
-    # 使用sample_batch函数sample出一组数据，包含一半正样本，一半负样本
-    sample1, sample2, targets = sample_batch(batch_size)
-    # 将数据送入模型，判断是否为同一类别
-    outputs = model(sample1.to(device), sample2.to(device))
-    # 将模型的结果丢给BCELoss计算损失
-    loss = criteria(outputs.flatten(), targets.to(device).float())
-    loss.backward()
-    # 更新模型参数
-    optimizer.step()
-    optimizer.zero_grad()
+    for episode in range(1000):
+        # 使用sample_batch函数sample出一组数据，包含一半正样本，一半负样本
+        sample1, sample2, targets = sample_batch(batch_size)
+        # 将数据送入模型，判断是否为同一类别
+        outputs = model(sample1.to(device), sample2.to(device))
+        # 将模型的结果丢给BCELoss计算损失
+        loss = criteria(outputs.flatten(), targets.to(device).float())
+        loss.backward()
+        # 更新模型参数
+        optimizer.step()
+        optimizer.zero_grad()
 
-    # 如果本次损失比之前的小，那么记录一下
-    if loss < min_loss:
-        min_loss = loss.item()
-        last_episode = episode
-        torch.save(model, 'model/best_model.pt')
-    # 如果连续{early_stop}次loss都没有减小，那么就停止训练
-    if episode - last_episode > early_stop:
-        break
+        # 如果本次损失比之前的小，那么记录一下
+        if loss < min_loss:
+            min_loss = loss.item()
+            last_episode = episode
+            torch.save(model, 'model/best_model.pt')
+        # 如果连续{early_stop}次loss都没有减小，那么就停止训练
+        if episode - last_episode > early_stop:
+            break
 
-    # 每50个episode打印一下日志
-    if episode % 50 == 0:
-        print(f"episode {episode}, loss {loss}")
+        # 每50个episode打印一下日志
+        if episode % 50 == 0:
+            print(f"episode {episode}, loss {loss}")
 
-print("Finish Training.")
+    print("Finish Training.")
+    return model
 
-#validation_dataset=train_dataset
-model = torch.load("model/best_model.pt")
-model = model.to(device)
+
+test_train_as_one = 1  # 调试测试：让测试集变得和训练集一样 1是一样 0是不一样
+if test_train_as_one:
+    validation_dataset = train_dataset
+
+load_model = 1 #  直接从现有加载还是训练一个新的
+if load_model:
+    model = torch.load("model/best_model.pt")
+    model = model.to(device)
+else:
+    model = train()
 
 support_set = []
 validation_set = []
@@ -127,6 +136,7 @@ for label in all_labels:
     label_indexes = np.argwhere(all_targets == label)
     support_set.append((label_indexes[:2].flatten().tolist()))
     validation_set += label_indexes[2:].flatten().tolist()
+
 
 def predict(image):
     sim_list = [] # 存储image与每个类别的相似度
